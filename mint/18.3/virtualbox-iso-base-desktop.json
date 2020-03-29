@@ -1,0 +1,89 @@
+{
+  	"sensitive-variables": ["ssh_username", "ssh_password", "iso_url", "guest_additions_url"],
+  	"variables": {
+        "working_directory": "{{ template_dir }}",
+		    "iso_url": "{{ iso_url }}",
+		    "iso_checksum": "{{ iso_checksum }}",
+		    "iso_checksum_type": "sha256",
+		    "vm_name": "linuxmint-18.3-cinnamon-64bit-masan-{{ isotime \"02012006-150405\" }}",
+		    "http_directory": "{{ user `working_directory` }}/base/http",
+		    "base_playbook_file": "{{ template_dir }}/base/ansible/ansible_base.yml",
+		    "ssh_fullname": "Ubuntu User",
+		    "ssh_username": "ubuntu",
+		    "ssh_password": "ubuntu",
+		    "preseed_file": "preseed_desktop.cfg",
+        "guest_additions_url": "{{ guest_additions_url }}",
+        "guest_additions_sha256": "{{ guest_additions_sha256 }}"
+  	},
+  	"builders": [
+      	{	
+          	"type": "virtualbox-iso",
+          	"guest_os_type": "Ubuntu_64",
+          	"iso_url": "{{ user `iso_url` }}",
+          	"iso_checksum": "{{ user `iso_checksum` }}",
+          	"iso_checksum_type": "{{ user `iso_checksum_type` }}",
+          	"vm_name": "{{ user `vm_name` }}",
+          	"ssh_username": "{{ user `ssh_username` }}",
+          	"ssh_password": "{{ user `ssh_password` }}",
+            "guest_additions_mode": "upload",
+            "guest_additions_url": "{{ user `guest_additions_url` }}",
+            "guest_additions_sha256": "{{ user `guest_additions_sha256` }}",
+          	"cpus": "2",
+          	"memory": "2048",
+          	"disk_size": "450000",
+          	"ssh_timeout": "2h",
+          	"format": "ova",
+            "headless": "true",
+          	"output_directory": "{{ pwd }}/BUILD-{{ user `vm_name` }}",
+          	"shutdown_command": "echo 'ubuntu' | sudo -S shutdown -P now",
+          	"shutdown_timeout": "5m",
+            "post_shutdown_delay": "5m",
+          	"http_directory": "{{ user `http_directory` }}",
+          	"boot_wait": "5s",
+          	"boot_command": [
+                "<esc><wait><tab><wait><leftCtrlOn>u<leftCtrlOff>",
+                "/casper/vmlinuz initrd=/casper/initrd.lz",
+                " url=http://{{ .HTTPIP }}:{{ .HTTPPort }}/preseed_desktop.cfg",
+                " automatic-ubiquity debug-ubiquity boot=casper quiet splash noprompt",
+                " -- ",
+                "<wait><enter>"
+        	  ],
+            "vboxmanage": [
+                ["modifyvm", "{{ .Name }}", "--vram", "48"],
+                ["modifyvm", "{{ .Name }}", "--vrde", "off"],
+                ["modifyvm", "{{ .Name }}", "--nic1", "nat"],
+                ["modifyvm", "{{ .Name }}", "--accelerate3d", "on"],
+                ["modifyvm", "{{ .Name }}", "--clipboard", "bidirectional"],
+                ["modifyvm", "{{ .Name }}", "--draganddrop", "bidirectional"],
+                ["storageattach", "{{ .Name }}", 
+                  "--storagectl", "IDE Controller",
+                  "--port", "1", 
+                  "--device", "1", 
+                  "--medium", "emptydrive", 
+                  "--type", "dvddrive"]
+            ]
+      	}
+  	],
+    "provisioners": [
+        {
+            "type": "shell",
+            "execute_command": "echo 'ubuntu' | {{.Vars}} sudo -S -E bash '{{.Path}}'",
+            "scripts": [
+                "{{ user `working_directory` }}/base/scripts/ansible.sh"
+            ]
+        },
+        {
+            "type": "shell",
+            "execute_command": "echo 'ubuntu' | {{.Vars}} sudo -S -E bash '{{.Path}}'",
+            "scripts": [
+                "{{ user `working_directory` }}/base/scripts/setup.sh"
+            ]
+        },
+        {
+            "type": "ansible-local",
+            "playbook_file": "{{ user `base_playbook_file` }}",
+            "extra_arguments": [ "--extra-vars", "ansible_sudo_pass={{ user `ssh_password` }}",
+                                "--verbose" ]
+        },
+    ],
+}

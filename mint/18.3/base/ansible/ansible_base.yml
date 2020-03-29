@@ -1,0 +1,49 @@
+---
+- hosts: all
+  become: yes
+  gather_facts: yes
+  vars:
+    local_user: "ubuntu"
+
+  tasks:
+    - name: "Add apt repositories"
+      apt_repository:
+        repo: "{{ item }}"
+      with_items:
+        - ppa:certbot/certbot
+
+    - name: "Install base utilities"
+      apt:
+        name:
+          - git
+          - wget
+          - curl
+          - vim
+          - unzip
+          - tar
+          - gzip
+          - bzip2
+          - p7zip-full
+          - p7zip-rar
+          - dos2unix
+          - ntp
+          - ntpdate
+          - certbot
+          - apt-transport-https
+          - python-pip
+        update_cache: yes
+        state: present
+
+    - name: "Create /opt/local directory"
+      file:
+        path: "/opt/local"
+        state: directory
+        mode: '0755'
+
+    - name: "Create local_user .bashrc file"
+      file:
+        path: "/home/{{ local_user }}/.bashrc"
+        owner: "{{ local_user }}"
+        group: "{{ local_user }}"
+        state: file
+        mode: '0755'
